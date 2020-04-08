@@ -1,0 +1,114 @@
+---
+- hosts: localhost reactive_platform
+  run_once: true
+  tasks:
+  - debug:
+      msg: "make sure all var is set: FT_NAME={{ FT_NAME }}, FILE_NAME={{ FILE_NAME }}, VERSION={{ VERSION }}, REPO_NAME={{ REPO_NAME }}"
+    tags: [ 'upload', 'build' ]
+
+  - name: Remove application_vars directory before cloning
+    delegate_to: localhost
+    file:
+      path: application_vars
+      state: absent
+    when: not ft_dev_mode
+    tags: [ 'upload', 'build' ]
+
+  - name: Clone application_vars directory from {{ application_vars_branch }}
+    delegate_to: localhost
+    git:
+      repo: "{{ application_vars_git }}"
+      dest: application_vars
+      version: "{{ application_vars_branch }}"
+      force: yes
+    when: not ft_dev_mode
+    run_once: true
+    tags: [ 'upload', 'build' ]
+
+  - name: Inclusion des var de l'appli
+    delegate_to: localhost
+    include_vars: "{{ playbook_dir }}/application_vars/go/{{ FT_NAME }}/common.yml"
+    run_once: true
+    tags: build
+
+  - name: Inclusion des var de l'environnement
+    delegate_to: localhost
+    include_vars: "{{ item }}"
+    with_first_found:
+      - "{{ playbook_dir }}/application_vars/go/{{ FT_NAME }}/{{ environment_name }}.yml"
+      - "{{ playbook_dir }}/application_vars/empty.yml"
+    run_once: true
+    tags: build
+
+  - name: define proxy_env if empty
+    delegate_to: localhost
+    set_fact:
+      go_env:
+        GOPATH: "{{ playbook_dir }}/go/"
+      proxy_env:
+        ftp_proxy: "ftp://proxy-applicatif.intra-coliposte.fr:3131"
+        http_proxy: "http://proxy-applicatif.intra-coliposte.fr:3131"
+        no_proxy: "localhost,127.0.0.1,.intra-coliposte.fr,.colis.intra.laposte.fr,.telintrans.fr,.cloud.alt"
+    tags: [ 'upload', 'build' ]
+
+  - name: Remove go directory before cloning
+    delegate_to: localhost
+    file:
+      path: "{{ playbook_dir }}/go/"
+      state: absent
+    when: not ft_dev_mode
+    tags: build
+
+  - name: create /go/src/ repo to build the project
+    delegate_to: localhost
+    file:
+      name: "{{ playbook_dir }}/go/src/"
+      state: directory
+    tags: build
+
+  - name: Clone {{ FT_NAME }} source code from branch {{ gitlab_project_branch }}
+    delegate_to: localhost
+    git:
+      repo: "{{ gitlab_project_url }}"
+      dest: "{{ playbook_dir }}/go/src/{{ FT_NAME }}"
+      version: "{{ gitlab_project_branch }}"
+      force: yes
+    when: not ft_dev_mode
+    tags: build
+
+  - debug:
+      msg: "env ::: {{ go_env }}"
+
+  - name: Build version {{ VERSION}} of {{ FT_NAME }}
+    delegate_to: localhost
+    command: "{{ BUILD_COMMAND }}"
+    args:
+      chdir: "{{ playbook_dir }}/go/src/{{ FT_NAME }}"
+    environment:
+      - "{{ env_vars }}"
+      - "{{ go_env }}"
+    tags: build
+
+  - name: Ensure binary does not already exist
+    delegate_to: localhost
+    uri:
+      url: "{{ nexus_url }}/service/local/repositories/releases/content/fr/laposte/colis/{{ REPO_NAME }}/{{ FT_NAME }}/{{ VERSION }}/{{ FILE_NAME }}-{{ VERSION }}"
+      method: GET
+      url_username: "{{ nexus_user }}"
+      url_password: "{{ nexus_password }}"
+      return_content: no
+      status_code: 200,404
+    environment: "{{ proxy_env }}"
+    register: already_exist
+    tags: upload
+    ignore_errors: yes
+
+  - name: Upload binary in nexus
+    delegate_to: localhost
+    command: "curl -XPOST -u {{ nexus_user }}:{{ nexus_password }}
+    --upload-file {{ playbook_dir }}/go/src/{{ FT_NAME }}/{{ FILE_NAME }}-{{ VERSION }}
+    {{ nexus_url}}/service/local/repositories/releases/content/fr/laposte/colis/{{ REPO_NAME }}/{{ FT_NAME }}/{{ VERSION }}/{{ FILE_NAME }}-{{ VERSION }}"
+    environment: "{{ proxy_env }}"
+    register: result
+    until: result.rc == 0
+    tags: upload
