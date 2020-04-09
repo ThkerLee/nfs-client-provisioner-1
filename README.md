@@ -62,6 +62,7 @@ Results:
 - Make sure that, when PVC is deleted, PV is deleted as well, but the mounted data directory is still available for later use.
 
 **The Solution**
+
 I updated the go source code in ``cmd/nfs-client-provisioner/provisioner.go`` as follows:
 
 - Create method: Create the data directory with only using the name given by ``subPath`` attribute.
