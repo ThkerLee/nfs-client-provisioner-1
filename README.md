@@ -44,7 +44,7 @@ Results:
 - Create The PVC pvc-nfs that uses a storage class with Retain policy pointing to our nfs-client-provisioner.
 - A new PV is dynamically created.
 - PVC is destroyed.
-- PV changes status to Released, and the only way to make it available is by updating it manually [a link](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes)
+- PV changes status to Released, and the only way to make it available is by updating it manually [reference](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistent-volumes)
 
 ** Using Delete or Recycle policy
 - PVC destroyed.
