@@ -91,7 +91,7 @@ $ kubectl create -f deploy/deployment.yml
 $ kubectl create -f deploy/class.yaml
 ```
 
-**Step 6: Configure the NFS-Client provisioner**
+**Step 5: Configure the NFS-Client provisioner**
 
 Note: To deploy to an ARM-based environment, use: `deploy/deployment-arm.yaml` instead, otherwise use `deploy/deployment.yaml`.
 
@@ -148,6 +148,16 @@ provisioner: cluster.local/nfs-provisioner
 parameters:
   archiveOnDelete: "false" # When set to "false" your PVs will not be archived
                            # by the provisioner upon deletion of the PVC.
+```
+
+**Step 6: Deploy the provisioner.**
+
+Commands:
+
+```sh
+$ kubectl create -f deploy/rbac.yml
+$ kubectl create -f deploy/deployment.yml
+$ kubectl create -f deploy/class.yaml
 ```
 
 **Step 7: Finally, test your environment!**
