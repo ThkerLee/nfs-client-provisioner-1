@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM hypriot/rpi-alpine:3.6
+FROM alpine:20190228
 RUN apk update --no-cache && apk add ca-certificates
-COPY nfs-client-provisioner /nfs-client-provisioner
+COPY docker/arm/nfs-client-provisioner /nfs-client-provisioner
 ENTRYPOINT ["/nfs-client-provisioner"]
