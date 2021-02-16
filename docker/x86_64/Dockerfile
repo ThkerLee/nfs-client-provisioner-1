@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.6
-RUN apk update --no-cache && apk add ca-certificates
-COPY docker/x86_64/nfs-client-provisioner /nfs-client-provisioner
+FROM centos:7
+#RUN apk update --no-cache && apk add ca-certificates
+COPY ./nfs-client-provisioner /nfs-client-provisioner
 ENTRYPOINT ["/nfs-client-provisioner"]

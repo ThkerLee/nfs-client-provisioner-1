@@ -23,7 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-//	"strings"
+	"strings"
 
 	"k8s.io/kubernetes/pkg/apis/core/v1/helper"
 
@@ -57,17 +57,21 @@ func (p *nfsProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 	if options.PVC.Spec.Selector != nil {
 		return nil, fmt.Errorf("claim Selector is not supported")
 	}
-	glog.V(4).Infof("nfs provisioner: VolumeOptions %v", options)
+	glog.V(3).Infof("nfs provisioner: VolumeOptions %v", options)
 
+	pvcNamespace := options.PVC.Namespace
+	pvcName := options.PVC.Name
 
-	fullPath := filepath.Join(mountPath,"")
-	glog.V(4).Infof("creating path %s", fullPath)
+	pvName := strings.Join([]string{pvcNamespace, pvcName, options.PVName}, "-")
+
+	fullPath := filepath.Join(mountPath, pvName)
+	glog.V(3).Infof("creating path %s", fullPath)
 	if err := os.MkdirAll(fullPath, 0777); err != nil {
 		return nil, errors.New("unable to create directory to provision new pv: " + err.Error())
 	}
 	os.Chmod(fullPath, 0777)
 
-	path := filepath.Join(p.path,"")
+	path := filepath.Join(p.path, pvName)
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -97,6 +101,7 @@ func (p *nfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	pvName := filepath.Base(path)
 	oldPath := filepath.Join(mountPath, pvName)
 	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		glog.Warningf("path %s does not exist, deletion skipped", oldPath)
 		return nil
 	}
 	// Get the storage class for this volume.
@@ -119,7 +124,7 @@ func (p *nfsProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	archivePath := filepath.Join(mountPath, "archived-"+pvName)
-	glog.V(4).Infof("archiving path %s to %s", oldPath, archivePath)
+	glog.V(3).Infof("archiving path %s to %s", oldPath, archivePath)
 	return os.Rename(oldPath, archivePath)
 
 }
